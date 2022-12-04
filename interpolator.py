@@ -3,7 +3,11 @@ import copy
 import numpy as np
 
 
-class PleuraInterpolator():
+class Interpolator():
+    '''
+    Class which facilitates the interpolation of the annotations
+    Manipulates the annotations.json file 
+    '''
 
     def __init__(self, path, type: str):
         self.path = path
