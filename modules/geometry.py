@@ -1,6 +1,10 @@
 import cv2
 import numpy as np
 
+def get_magnitudes(coords):
+    """Return the upper left node of a polygon."""
+    return [np.sqrt(x.dot(x)) for x in coords]
+
 def find_extrema_rectangle(points):
     """Find the extrema of a polygon and return rectangle coordinates."""
     x = [point[0] for point in points]
