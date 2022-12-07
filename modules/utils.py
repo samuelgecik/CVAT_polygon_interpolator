@@ -1,6 +1,12 @@
 import numpy as np
 import copy
+import tempfile
+import zipfile
+import shutil
+import os
 from .geometry import *
+
+np.seterr(all="raise")
 
 
 def chunks(lst, n):
@@ -24,23 +30,18 @@ def group_shapes_by_frame(filtered_shapes: list):
     """
     Groups shapes by frame
     """
-    frame = 0
-    last_frame = filtered_shapes[-1]["frame"]
-    last_shape_idx = len(filtered_shapes) - 1
+    frame = filtered_shapes[0]["frame"]
     shapes_by_frame = []
     shapes_in_single_frame = []
-    for i, shape in enumerate(filtered_shapes):
+    for shape in filtered_shapes:
         if shape["frame"] == frame:
             shapes_in_single_frame.append(shape)
-            # if multiple shapes in the last frame, add to shapes_by_frame
-            if i == last_shape_idx:
-                shapes_by_frame.append(shapes_in_single_frame)
-
         else:
-            frame = frame + 10 if (frame + 10) < last_frame else last_frame
+            frame = shape["frame"]
             shapes_by_frame.append(shapes_in_single_frame)
             shapes_in_single_frame = []
             shapes_in_single_frame.append(shape)
+    shapes_by_frame.append(shapes_in_single_frame)
     return shapes_by_frame
 
 
@@ -52,14 +53,18 @@ def remove_duplicates(shapes_by_frame: list[list]):
     for frame in shapes_by_frame:
         if len(frame) == 1:
             continue
+        i = 0
         # find if two polygons intersect by comparing each other
-        for i in range(len(frame)):
-            for j in range(i + 1, len(frame)):
+        while i < len(frame):
+            j = i + 1
+            while j < len(frame):
                 if intersect(
                     chunks(frame[i]["points"], 2), chunks(frame[j]["points"], 2)
                 ):
                     # remove one of the polygons
                     frame.pop(j)
+                j += 1
+            i += 1
 
 
 def assign_id(shapes_by_frame: list[list]):
@@ -77,11 +82,15 @@ def assign_id(shapes_by_frame: list[list]):
     for i, frame in enumerate(shapes_by_frame[1:], start=1):
         for shape in frame:
             # check if the shape with the same id is present in the previous frame
-            # if same label and square intersect: then same id else: new id
+            # if same label and square intersect and frame difference < 10: then same id else: new id
             for prev_shape in shapes_by_frame[i - 1]:
-                if shape["label"] == prev_shape["label"] and intersect(
-                    find_extrema_rectangle(chunks(shape["points"], 2)),
-                    find_extrema_rectangle(chunks(prev_shape["points"], 2)),
+                if (
+                    shape["label"] == prev_shape["label"]
+                    and (shape["frame"] - prev_shape["frame"]) <= 10
+                    and intersect(
+                        find_extrema_rectangle(chunks(shape["points"], 2)),
+                        find_extrema_rectangle(chunks(prev_shape["points"], 2)),
+                    )
                 ):
                     shape["id"] = prev_shape["id"]
                     break
@@ -171,28 +180,31 @@ def interpolator(frames: list[dict], indicies: dict, annots: list):
     offset = 1
     # iterates over grouped by frame shapes
     for i, group in enumerate(frames[:-1]):
-        # check if some shapes are missing in the next frame
-        cut = max(0, len(group) - len(frames[i + 1]))
+        if group[0]["frame"] == 150:
+            print("debug")
+            print(group)
         # check which shapes are missing in the next frame and remove them from the group
         # shapes are checked by treir id
-        if cut > 0:
-            for _ in range(cut):
-                for shape in group:
-                    if shape["id"] not in [x["id"] for x in frames[i + 1]]:
-                        group.remove(shape)
-                        break
+        for shape in group:
+            if shape["id"] not in [x["id"] for x in frames[i + 1]]:
+                group.remove(shape)
+        if len(group) == 0:
+            continue
         frames_to_interpolate = frames[i + 1][0]["frame"] - frames[i][0]["frame"]
-        difference, step = [], []
+        differences, step = [], []
         # iterates over shapes in a group
         for j, shape in enumerate(group):
-            # TODO: id
+            # get shape from the next frame with the same id
+            for next_shape in frames[i + 1]:
+                if shape["id"] == next_shape["id"]:
+                    break
             # add points to the shape if the next shape has less points
-            if len(shape["points"]) < len(frames[i + 1][j]["points"]):
+            if len(shape["points"]) < len(next_shape["points"]):
                 shape["points"] = add_remove_point(
-                    [shape["points"], frames[i + 1][j]["points"]]
+                    [shape["points"], next_shape["points"]]
                 )
             # get the difference between the points of the same shape in the next group
-            difference = np.subtract(frames[i + 1][j]["points"], shape["points"])
+            difference = np.subtract(next_shape["points"], shape["points"])
             # get the step by which the points will be interpolated
             step.append(difference / frames_to_interpolate)
         # iterates over each shape in a group
@@ -206,3 +218,18 @@ def interpolator(frames: list[dict], indicies: dict, annots: list):
                     indicies.get(shape["frame"]) + offset, copy.deepcopy(skelet)
                 )
                 offset += 1
+
+
+def remove_from_zip(zipfname, *filenames):
+    tempdir = tempfile.mkdtemp()
+    try:
+        tempname = os.path.join(tempdir, "new.zip")
+        with zipfile.ZipFile(zipfname, "r") as zipread:
+            with zipfile.ZipFile(tempname, "w") as zipwrite:
+                for item in zipread.infolist():
+                    if item.filename not in filenames:
+                        data = zipread.read(item.filename)
+                        zipwrite.writestr(item, data)
+        shutil.move(tempname, zipfname)
+    finally:
+        shutil.rmtree(tempdir)
