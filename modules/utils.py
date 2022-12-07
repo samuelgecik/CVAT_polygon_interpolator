@@ -99,21 +99,18 @@ def assign_id(shapes_by_frame: list[list]):
                 id_count += 1
 
 
-def align_points(shapes_by_frame: list[list]):
+def align_points(shapes_by_frame: list[list], annots: list[dict]):
     """
     Aligns points of the shapes in the list of shapes grouped by frame
     """
     for i, frame in enumerate(shapes_by_frame[:-1]):
         for shape in frame:
-            if shape["frame"] == 560:
-                print("debug")
-                print(shape)
             # check if the shape with the same id is present in the next frame
-            if shape["id"] not in [x["id"] for x in shapes_by_frame[i + 1]]:
-                continue
-            next_shape = [x for x in shapes_by_frame[i + 1] if x["id"] == shape["id"]][
-                0
-            ]
+            for next_shape in shapes_by_frame[i + 1]:
+                if shape["id"] == next_shape["id"]:
+                    break
+            annots_index = annots.index([x for x in annots if x["points"] == shape["points"]][0])
+            # get the points of the shape and the next shape
             points = np.array(chunks(shape["points"], 2))
             next_points = np.array(chunks(next_shape["points"], 2))
             magnitudes = get_magnitudes(points)
@@ -134,7 +131,7 @@ def align_points(shapes_by_frame: list[list]):
                 points = np.roll(
                     points, -(-magnitudes_in_next.index(upper_left_in_next)), axis=0
                 )
-                shape["points"] = points.flatten().tolist()
+                annots[annots_index]["points"] = points.flatten().tolist()
 
 
 def get_skelet(type: str):
@@ -233,11 +230,12 @@ def interpolator(frames: list[dict], indicies: dict, annots: list):
             for next_shape in frames[i + 1]:
                 if shape["id"] == next_shape["id"]:
                     break
-            # add points to the shape if the next shape has less points
-            if len(shape["points"]) < len(next_shape["points"]):
+            # add or remove points to the shape if the next shape has less points
+            if len(shape["points"]) != len(next_shape["points"]):
                 shape["points"] = add_remove_point(
                     [shape["points"], next_shape["points"]]
                 )
+            shape['points'] = align_points(shape, next_shape)
             # get the difference between the points of the same shape in the next group
             difference = np.subtract(next_shape["points"], shape["points"])
             # get the step by which the points will be interpolated
