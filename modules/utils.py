@@ -99,39 +99,36 @@ def assign_id(shapes_by_frame: list[list]):
                 id_count += 1
 
 
-def align_points(shapes_by_frame: list[list], annots: list[dict]):
+def align_points(shape, next_shape):
     """
     Aligns points of the shapes in the list of shapes grouped by frame
     """
-    for i, frame in enumerate(shapes_by_frame[:-1]):
-        for shape in frame:
-            # check if the shape with the same id is present in the next frame
-            for next_shape in shapes_by_frame[i + 1]:
-                if shape["id"] == next_shape["id"]:
-                    break
-            annots_index = annots.index([x for x in annots if x["points"] == shape["points"]][0])
-            # get the points of the shape and the next shape
-            points = np.array(chunks(shape["points"], 2))
-            next_points = np.array(chunks(next_shape["points"], 2))
-            magnitudes = get_magnitudes(points)
-            upper_left = min(magnitudes)
-            magnitudes_in_next = get_magnitudes(next_points)
-            upper_left_in_next = min(magnitudes_in_next)
-            # start polygons from the most upper left point
-            if magnitudes.index(upper_left) != 0:
-                points = np.roll(points, -magnitudes.index(upper_left), axis=0)
-            if magnitudes_in_next.index(upper_left_in_next) != 0:
-                next_points = np.roll(
-                    next_points, -magnitudes_in_next.index(upper_left_in_next), axis=0
-                )
-            # compare the direction of labeling by checking second points
-            if (abs(points[1] - next_points[1]) > 100).any():
-                # flip the points of the first shape
-                points[1:] = np.flip(points[1:], axis=0)
-                points = np.roll(
-                    points, -(-magnitudes_in_next.index(upper_left_in_next)), axis=0
-                )
-                annots[annots_index]["points"] = points.flatten().tolist()
+    # get the points of the shape and the next shape
+    points = np.array(chunks(shape["points"], 2))
+    next_points = np.array(chunks(next_shape["points"], 2))
+    magnitudes = get_magnitudes(points)
+    upper_left = min(magnitudes)
+    magnitudes_in_next = get_magnitudes(next_points)
+    upper_left_in_next = min(magnitudes_in_next)
+    upper_left_idx = magnitudes.index(upper_left)
+    upper_left_in_next_idx = magnitudes_in_next.index(upper_left_in_next)
+
+    # check if the starting point is the same
+    if upper_left_idx != upper_left_in_next_idx or upper_left_idx != 0:
+        points = np.roll(points, -upper_left_idx, axis=0)
+        next_points = np.roll(next_points, -upper_left_in_next_idx, axis=0)
+    # check if the direction of the labeling is the same
+    if np.any(
+        abs(
+            points[(upper_left_idx + 1) % len(points)]
+            - next_points[(upper_left_in_next_idx + 1) % len(points)]
+        )
+        > 110
+    ):
+        # flip the order of points (except first) of the second shape
+        next_points[1:] = np.flip(next_points[1:], axis=0)
+    next_points = np.roll(next_points, upper_left_idx, axis=0)
+    return next_points.flatten().tolist()
 
 
 def get_skelet(type: str):
@@ -225,7 +222,7 @@ def interpolator(frames: list[dict], indicies: dict, annots: list):
         frames_to_interpolate = frames[i + 1][0]["frame"] - frames[i][0]["frame"]
         step = {}
         # iterates over shapes in a group
-        for j, shape in enumerate(group):
+        for shape in group:
             # get shape from the next frame with the same id
             for next_shape in frames[i + 1]:
                 if shape["id"] == next_shape["id"]:
@@ -235,14 +232,14 @@ def interpolator(frames: list[dict], indicies: dict, annots: list):
                 shape["points"] = add_remove_point(
                     [shape["points"], next_shape["points"]]
                 )
-            shape['points'] = align_points(shape, next_shape)
+            next_shape["points"] = align_points(shape, next_shape)
             # get the difference between the points of the same shape in the next group
             difference = np.subtract(next_shape["points"], shape["points"])
             # get the step by which the points will be interpolated
             step[next_shape["id"]] = difference / frames_to_interpolate
         # iterates over each shape in a group
         for k in range(1, frames_to_interpolate):
-            for j, shape in enumerate(group):
+            for shape in group:
                 points = shape["points"].copy() + (step[shape["id"]] * k)
                 skelet = get_skelet(shape["label"])
                 skelet["points"] = list(points)
