@@ -26,6 +26,30 @@ def get_indicies(shapes: list[dict]):
     return dict((d["frame"], index) for (index, d) in enumerate(shapes))
 
 
+def annots_duplicates_removal(annots: list[dict]):
+    """
+    Removes duplicate shapes from the annotations
+    """
+    # remove duplicate shapes in the same frame
+    i = 0
+    while i < len(annots) - 1:
+        j = i + 1
+        while annots[i]["frame"] == annots[j]["frame"]:
+            if (
+                intersect(
+                    chunks(annots[i]["points"], 2), chunks(annots[j]["points"], 2)
+                )
+                and annots[i]["label"] == annots[j]["label"]
+            ):
+                # remove one of the polygons
+                annots.pop(j)
+                break
+            j += 1
+            if j >= len(annots) - 1:
+                break
+        i += 1
+
+
 def group_shapes_by_frame(filtered_shapes: list):
     """
     Groups shapes by frame
