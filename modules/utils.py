@@ -1,9 +1,5 @@
 import numpy as np
 import copy
-import tempfile
-import zipfile
-import shutil
-import os
 from .geometry import *
 
 np.seterr(all="raise")
@@ -69,26 +65,26 @@ def group_shapes_by_frame(filtered_shapes: list):
     return shapes_by_frame
 
 
-def remove_duplicates(shapes_by_frame: list[list]):
-    """
-    Removes duplicate shapes on the same frame
-    """
-    # remove duplicate shapes in the same frame
-    for frame in shapes_by_frame:
-        if len(frame) == 1:
-            continue
-        i = 0
-        # find if two polygons intersect by comparing each other
-        while i < len(frame):
-            j = i + 1
-            while j < len(frame):
-                if intersect(
-                    chunks(frame[i]["points"], 2), chunks(frame[j]["points"], 2)
-                ):
-                    # remove one of the polygons
-                    frame.pop(j)
-                j += 1
-            i += 1
+# def remove_duplicates(shapes_by_frame: list[list]):
+#     """
+#     Removes duplicate shapes on the same frame
+#     """
+#     # remove duplicate shapes in the same frame
+#     for frame in shapes_by_frame:
+#         if len(frame) == 1:
+#             continue
+#         i = 0
+#         # find if two polygons intersect by comparing each other
+#         while i < len(frame):
+#             j = i + 1
+#             while j < len(frame):
+#                 if intersect(
+#                     chunks(frame[i]["points"], 2), chunks(frame[j]["points"], 2)
+#                 ):
+#                     # remove one of the polygons
+#                     frame.pop(j)
+#                 j += 1
+#             i += 1
 
 
 def assign_id(shapes_by_frame: list[list]):
@@ -272,18 +268,3 @@ def interpolator(frames: list[dict], indicies: dict, annots: list):
                     indicies.get(shape["frame"]) + offset, copy.deepcopy(skelet)
                 )
                 offset += 1
-
-
-def remove_from_zip(zipfname, *filenames):
-    tempdir = tempfile.mkdtemp()
-    try:
-        tempname = os.path.join(tempdir, "new.zip")
-        with zipfile.ZipFile(zipfname, "r") as zipread:
-            with zipfile.ZipFile(tempname, "w") as zipwrite:
-                for item in zipread.infolist():
-                    if item.filename not in filenames:
-                        data = zipread.read(item.filename)
-                        zipwrite.writestr(item, data)
-        shutil.move(tempname, zipfname)
-    finally:
-        shutil.rmtree(tempdir)
