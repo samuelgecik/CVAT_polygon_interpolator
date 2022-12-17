@@ -65,28 +65,6 @@ def group_shapes_by_frame(filtered_shapes: list):
     return shapes_by_frame
 
 
-# def remove_duplicates(shapes_by_frame: list[list]):
-#     """
-#     Removes duplicate shapes on the same frame
-#     """
-#     # remove duplicate shapes in the same frame
-#     for frame in shapes_by_frame:
-#         if len(frame) == 1:
-#             continue
-#         i = 0
-#         # find if two polygons intersect by comparing each other
-#         while i < len(frame):
-#             j = i + 1
-#             while j < len(frame):
-#                 if intersect(
-#                     chunks(frame[i]["points"], 2), chunks(frame[j]["points"], 2)
-#                 ):
-#                     # remove one of the polygons
-#                     frame.pop(j)
-#                 j += 1
-#             i += 1
-
-
 def assign_id(shapes_by_frame: list[list]):
     """
     Assigns id to each shape in the list of shapes grouped by frame
