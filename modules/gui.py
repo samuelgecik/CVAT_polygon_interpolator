@@ -1,7 +1,3 @@
-# class for choosing multiple files
-# from https://stackoverflow.com/questions/3579568/choosing-multiple-files-in-python-with-simpledialog
-# 2018-12-04	PV
-
 import tkinter as tk
 import customtkinter as ctk
 import numpy as np
@@ -13,23 +9,24 @@ class MainGUI:
     def __init__(self, master):
         self.master = master
 
-        self.master.title("File Chooser")
-        self.master.geometry("400x400")
+        self.master.title("Lung USG Interpolator")
+        self.master.geometry("900x500")
         # Create frames
-        self.top_frame = tk.Frame(self.master)
+        self.top_frame = tk.Frame(self.master, bg="black")
         self.top_frame.pack(expand=True)
 
-        self.left_frame = tk.Frame(self.top_frame)
+        self.left_frame = tk.Frame(self.top_frame, bg="black")
         self.left_frame.pack(side="left", expand=True)
 
-        self.middle_frame = tk.Frame(self.master)
+        self.middle_frame = tk.Frame(self.master, bg="black")
         self.middle_frame.pack(expand=True)
 
-        self.bottom_frame = tk.Frame(self.master)
+        self.bottom_frame = tk.Frame(self.master, bg="black")
         self.bottom_frame.pack(expand=True)
 
         self.state_list = None
         self.files = None
+        self.output = None
         self.shapes_lst = ["lungslidingpresent", "lungslidingabsent", "aline", "bline"]
 
         self.createWidgets()
@@ -41,7 +38,7 @@ class MainGUI:
         self.select.pack(padx=10, side="left")
 
         self.output = ctk.CTkButton(
-            self.middle_frame, text="Choose Output", command=self.selectOutput
+            self.middle_frame, text="Choose Output Folder", command=self.selectOutput
         )
         self.output.pack(padx=10, side="left")
 
@@ -80,8 +77,12 @@ class MainGUI:
 
     def selectFiles(self):
         self.files = filedialog.askopenfilenames(filetypes=[("Zip", "*.zip")])
-        for filename in self.files:
-            tk.Label(self.left_frame, text=filename.split("/")[-1]).pack(pady=5)
+        for i, filename in enumerate(self.files):
+            tk.Label(
+                self.left_frame,
+                text=f"File {i+1}: " + filename.split("/")[-1],
+                bg="black",
+            ).pack(pady=5)
 
     def selectOutput(self):
         self.output_path = filedialog.askdirectory()
@@ -98,13 +99,19 @@ class MainGUI:
             ]
         else:
             tk.messagebox.showerror("Error", "Please select some shapes.")
+            pass
+        if self.output_path is None:
+            tk.messagebox.showerror("Error", "Please select an output folder.")
+            pass
         if self.files is not None:
             for input_path in self.files:
                 interpolator = Interpolator(input_path, self.output_path, shapes_lst)
                 interpolator.interpolate()
+                tk.messagebox.showinfo("Success", "Done!")
                 self.master.destroy()
         else:
             tk.messagebox.showerror("Error", "Please select some files.")
+            pass
 
 
 # if __name__ == "__main__":
