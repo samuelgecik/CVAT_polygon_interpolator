@@ -33,7 +33,7 @@ class MainGUI:
 
     def createWidgets(self):
         self.select = ctk.CTkButton(
-            self.middle_frame, text="Choose File", command=self.selectFiles
+            self.middle_frame, text="Choose Files", command=self.selectFiles
         )
         self.select.pack(padx=10, side="left")
 
@@ -112,13 +112,3 @@ class MainGUI:
         else:
             tk.messagebox.showerror("Error", "Please select some files.")
             pass
-
-
-# if __name__ == "__main__":
-#     ctk.set_appearance_mode("System")  # Modes: system (default), light, dark
-#     # Themes: blue (default), dark-blue, green
-#     ctk.set_default_color_theme("dark-blue")
-#     root = ctk.CTk()
-#     chooser = MultiFileSelect(root)
-#     root.mainloop()
-#     print(chooser.state_list)
