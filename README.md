@@ -12,3 +12,7 @@
 3. Choose an output folder
 4. Check which atrifacts you want to interpolate
 5. Click **Process**
+
+## Screeshot
+
+![](imgs/main_window.png)
