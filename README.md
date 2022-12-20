@@ -10,6 +10,7 @@
 ### Input format
 Program awaits .zip file which has been generated as a backup of a task from the CVAT software.
 This archive should have the following structure:
+
 ![](imgs/archive_structure.png)
 
 ### Output format
