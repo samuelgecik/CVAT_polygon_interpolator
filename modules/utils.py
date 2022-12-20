@@ -46,6 +46,17 @@ def annots_duplicates_removal(annots: list[dict]):
         i += 1
 
 
+def filter_shapes(shapes: list[dict], shapes_lst: list[str]):
+    """
+    Filters shapes by type and label
+    """
+    return [
+        shape
+        for shape in shapes
+        if shape["type"] == "polygon" and shape["label"] in shapes_lst
+    ]
+
+
 def group_shapes_by_frame(filtered_shapes: list):
     """
     Groups shapes by frame

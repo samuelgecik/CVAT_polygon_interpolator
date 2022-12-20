@@ -12,11 +12,7 @@ class Interpolator:
     def interpolate(self):
         annots_duplicates_removal(self.annots[0]["shapes"])
         shapes = copy.deepcopy(self.annots[0]["shapes"])
-        filtered_shapes = [
-            shape
-            for shape in shapes
-            if shape["type"] == "polygon" and shape["label"] in self.shapes_lst
-        ]
+        filtered_shapes = filter_shapes(shapes, self.shapes_lst)
         indicies = get_indicies(shapes)
         shapes_by_frame = group_shapes_by_frame(filtered_shapes)
         assign_id(shapes_by_frame)
